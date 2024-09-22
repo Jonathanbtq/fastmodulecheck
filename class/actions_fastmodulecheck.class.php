@@ -379,10 +379,23 @@ class ActionsFastmodulecheck extends CommonHookActions
 	 *												>0 if OK and we want to replace standard actions.
 	 */
 	public function printTopRightMenu(&$parameters, &$object, &$action, $hookmanager) {
-		global $conf, $user, $langs, $mysoc, $db;
+		global $conf, $user, $langs, $db;
 
 		require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
 
+		// if we set another view list mode, we keep it (till we change one more time)
+		if (GETPOSTISSET('mode')) {
+			$mode = GETPOST('mode', 'alpha');
+			if ($mode =='common' || $mode =='commonkanban') {
+				dolibarr_set_const($db, "MAIN_MODULE_SETUP_ON_LIST_BY_DEFAULT", $mode, 'chaine', 0, '', $conf->entity);
+			}
+		} else {
+			$mode = (!getDolGlobalString('MAIN_MODULE_SETUP_ON_LIST_BY_DEFAULT') ? 'commonkanban' : $conf->global->MAIN_MODULE_SETUP_ON_LIST_BY_DEFAULT);
+		}
+
+		$action = GETPOST('action', 'aZ09');
+		$value = GETPOST('value', 'alpha');
+		$page_y = GETPOST('page_y', 'int');
 		$error = 0; // Error counter
 		$contexts = explode(':', $parameters['context'] ?? '');
 		$modulesdir = dolGetModulesDirs();
@@ -392,6 +405,51 @@ class ActionsFastmodulecheck extends CommonHookActions
 		$orders = [];
 
 		if (in_array('toprightmenu', $contexts)) {
+			/**
+			 * Action
+			 */
+			if ($action == 'set' && $user->admin) {
+				$checkOldValue = getDolGlobalInt('CHECKLASTVERSION_EXTERNALMODULE');
+				$csrfCheckOldValue = getDolGlobalInt('MAIN_SECURITY_CSRF_WITH_TOKEN');
+				$resarray = activateModule($value);
+				if ($checkOldValue != getDolGlobalInt('CHECKLASTVERSION_EXTERNALMODULE')) {
+					setEventMessage($langs->trans('WarningModuleHasChangedLastVersionCheckParameter', $value), 'warnings');
+				}
+				if ($csrfCheckOldValue != getDolGlobalInt('MAIN_SECURITY_CSRF_WITH_TOKEN')) {
+					setEventMessage($langs->trans('WarningModuleHasChangedSecurityCsrfParameter', $value), 'warnings');
+				}
+				dolibarr_set_const($db, "MAIN_IHM_PARAMS_REV", getDolGlobalInt('MAIN_IHM_PARAMS_REV') + 1, 'chaine', 0, '', $conf->entity);
+				if (!empty($resarray['errors'])) {
+					setEventMessages('', $resarray['errors'], 'errors');
+				} else {
+					//var_dump($resarray);exit;
+					if ($resarray['nbperms'] > 0) {
+						$tmpsql = "SELECT COUNT(rowid) as nb FROM ".MAIN_DB_PREFIX."user WHERE admin <> 1";
+						$resqltmp = $db->query($tmpsql);
+						if ($resqltmp) {
+							$obj = $db->fetch_object($resqltmp);
+							//var_dump($obj->nb);exit;
+							if ($obj && $obj->nb > 1) {
+								$msg = $langs->trans('ModuleEnabledAdminMustCheckRights');
+								setEventMessages($msg, null, 'warnings');
+							}
+						} else {
+							dol_print_error($db);
+						}
+					}
+				}
+				header("Location: ".$_SERVER["PHP_SELF"]."?mode=".$mode.$param.($page_y ? '&page_y='.$page_y : ''));
+				exit;
+			} elseif ($action == 'reset' && $user->admin) {
+				$result = unActivateModule($value);
+				dolibarr_set_const($db, "MAIN_IHM_PARAMS_REV", getDolGlobalInt('MAIN_IHM_PARAMS_REV') + 1, 'chaine', 0, '', $conf->entity);
+				if ($result) {
+					setEventMessages($result, null, 'errors');
+				}
+				header("Location: ".$_SERVER["PHP_SELF"]."?mode=".$mode.$param.($page_y ? '&page_y='.$page_y : ''));
+				exit;
+			}
+
 			// if we set another view list mode, we keep it (till we change one more time)
 			if (GETPOSTISSET('mode')) {
 				$mode = GETPOST('mode', 'alpha');
@@ -557,7 +615,9 @@ class ActionsFastmodulecheck extends CommonHookActions
 					$module_position = $tab[2];
 	
 					$modName = $filename[$key];
+					$const_name = 'MAIN_MODULE_'.strtoupper(preg_replace('/^mod/i', '', get_class($objMod)));
 	
+					$codeenabledisable = '';
 					/** @var DolibarrModules $objMod */
 					$objMod = $modules[$modName];
 	
@@ -567,35 +627,56 @@ class ActionsFastmodulecheck extends CommonHookActions
 					$moduledesclong = $objMod->getDescLong();
 					$moduleauthor = $objMod->getPublisher();
 	
-					if (empty($objMod->always_enabled) && getDolGlobalString($const_name)) {
-						$codeenabledisable .= '<a class="reposition" href="'.$_SERVER["PHP_SELF"].'?id='.$objMod->numero.'&token='.newToken().'&module_position='.$module_position.'&action=set&token='.newToken().'&value='.$modName.'&mode='.$mode.$param.'"';
+					// if (empty($objMod->always_enabled)) {
+					// 	if (!empty($objMod->warnings_unactivation[$mysoc->country_code]) && method_exists($objMod, 'alreadyUsed') && $objMod->alreadyUsed()) {
+					// 		$codeenabledisable .= '<a class="reposition valignmiddle" href="'.$_SERVER["PHP_SELF"].'?id='.$objMod->numero.'&amp;token='.newToken().'&amp;module_position='.$module_position.'&amp;action=reset_confirm&amp;confirm_message_code='.urlencode($objMod->warnings_unactivation[$mysoc->country_code]).'&amp;value='.$modName.'&amp;mode='.$mode.$param.'">';
+					// 		$codeenabledisable .= img_picto($langs->trans("Activated"), 'switch_on');
+					// 		$codeenabledisable .= '</a>';
+					// 	} else {
+					// 		$codeenabledisable .= '<a class="reposition valignmiddle" href="'.$_SERVER["PHP_SELF"].'?id='.$objMod->numero.'&amp;token='.newToken().'&amp;module_position='.$module_position.'&amp;action=reset&amp;value='.$modName.'&amp;mode='.$mode.'&amp;confirm=yes'.$param.'">';
+					// 		$codeenabledisable .= img_picto($langs->trans("Activated"), 'switch_on');
+					// 		$codeenabledisable .= '</a>';
+					// 	}
+					// }
+					
+					// if (empty($objMod->disabled)) {
+					// 	if (!empty($objMod->warnings_unactivation[$mysoc->country_code]) && method_exists($objMod, 'alreadyUsed') && $objMod->alreadyUsed()) {
+					// 		$codeenabledisable .= '<a class="reposition valignmiddle" href="'.$_SERVER["PHP_SELF"].'?id='.$objMod->numero.'&amp;token='.newToken().'&amp;module_position='.$module_position.'&amp;action=reset_confirm&amp;confirm_message_code='.urlencode($objMod->warnings_unactivation[$mysoc->country_code]).'&amp;value='.$modName.'&amp;mode='.$mode.$param.'">';
+					// 		$codeenabledisable .= img_picto($langs->trans("Activated").($warningstring ? ' '.$warningstring : ''), 'switch_on');
+					// 		$codeenabledisable .= '</a>';
+					// 	} else {
+					// 		$codeenabledisable .= '<a class="reposition valignmiddle" href="'.$_SERVER["PHP_SELF"].'?id='.$objMod->numero.'&amp;token='.newToken().'&amp;module_position='.$module_position.'&amp;action=reset&amp;value='.$modName.'&amp;mode='.$mode.'&amp;confirm=yes'.$param.'">';
+					// 		$codeenabledisable .= img_picto($langs->trans("Activated").($warningstring ? ' '.$warningstring : ''), 'switch_on');
+					// 		$codeenabledisable .= '</a>';
+					// 	}
+					// }
+
+					if (getDolGlobalString($const_name)) {
+						if (!empty($objMod->warnings_unactivation[$mysoc->country_code]) && method_exists($objMod, 'alreadyUsed') && $objMod->alreadyUsed()) {
+							$codeenabledisable .= '<a class="reposition" href="'.$_SERVER["PHP_SELF"].'?id='.$objMod->numero.'&amp;token='.newToken().'&amp;module_position='.$module_position.'&amp;action=set&amp;value='.$modName.'&amp;mode='.$mode.'&amp;confirm=yes'.$param.'">';
+							$codeenabledisable .= img_picto($langs->trans("Disabled"), 'switch_off');
+							$codeenabledisable .= '</a>';
+						} else {
+							// activer
+							$codeenabledisable .= '<a class="reposition" href="'.$_SERVER["PHP_SELF"].'?id='.$objMod->numero.'&amp;token='.newToken().'&amp;module_position='.$module_position.'&amp;action=set&amp;value='.$modName.'&amp;mode='.$mode.'&amp;confirm=yes'.$param.'">';
+							$codeenabledisable .= img_picto($langs->trans("Disabled"), 'switch_off');
+							$codeenabledisable .= '</a>';
+						}
+					} else {
+						// MODULE PAS ACTIVER
+						$codeenabledisable .= '<a class="reposition valignmiddle" href="'.$_SERVER["PHP_SELF"].'?id='.$objMod->numero.'&token='.newToken().'&module_position='.$module_position.'&action=reset&token='.newToken().'&value='.$modName.'&mode='.$mode.'&amp;confirm=yes'.$param.'"';
 						$codeenabledisable .= '>';
 						$codeenabledisable .= img_picto($langs->trans("Activated"), 'switch_on');
-						$codeenabledisable .= "</a>\n";
-					} else {
-						$codeenabledisable .= '<a class="reposition" href="'.$_SERVER["PHP_SELF"].'?id='.$objMod->numero.'&token='.newToken().'&module_position='.$module_position.'&action=set&token='.newToken().'&value='.$modName.'&mode='.$mode.$param.'"';
-						$codeenabledisable .= img_picto($langs->trans("Activated"), 'switch_on');
 						$codeenabledisable .= "</a>";
-						var_dump($codeenabledisable);
 					}
 	
 					// $iconValue = ($moduleValue == 1) ? 'no' : 'yes';
 					$menu .= '<tr class="table_fast_value">';
-					
 					// Affiche le nom du module
 					$menu .= '<td>' . htmlspecialchars($moduletechnicalname) . '</td>';
-					
-					// Affiche le statut du module (activé/désactivé)
-					// $statusText = ($moduleValue == 1) ? 'Enabled' : 'Disabled';
-					// $menu .= '<td>' . htmlspecialchars($statusText) . '</td>';
-					
 					// Crée le bouton pour activer/désactiver
 					$menu .= '<td>';
-					// $menu .= '<a class="reposition" href="' . $_SERVER["PHP_SELF"] . '?value=' . urlencode($moduleName) . '&token=' . newToken() . '&action=activedModule&confirm='.$iconValue.'">';
-					$menu .= print $codeenabledisable;
-					// $icon = ($objMod->disabled == true) ? 'switch_on' : 'switch_off';
-					// $menu .= img_picto($langs->trans($statusText), $icon);
-					// $menu .= '</a>';
+					$menu .= $codeenabledisable;
 					$menu .= '</td>';
 					
 					$menu .= '</tr>';
