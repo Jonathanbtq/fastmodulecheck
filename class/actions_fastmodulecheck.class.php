@@ -422,7 +422,6 @@ class ActionsFastmodulecheck extends CommonHookActions
 				if (!empty($resarray['errors'])) {
 					setEventMessages('', $resarray['errors'], 'errors');
 				} else {
-					//var_dump($resarray);exit;
 					if ($resarray['nbperms'] > 0) {
 						$tmpsql = "SELECT COUNT(rowid) as nb FROM ".MAIN_DB_PREFIX."user WHERE admin <> 1";
 						$resqltmp = $db->query($tmpsql);
@@ -670,34 +669,7 @@ class ActionsFastmodulecheck extends CommonHookActions
 					$menu .= '</tr>';
 				}
 			}
-
-			
-
-			// foreach ($modulTitle as $moduleName => $moduleValue) {
-			// 	$iconValue = ($moduleValue == 1) ? 'no' : 'yes';
-			// 	$menu .= '<tr class="table_fast_value">';
-				
-			// 	// Affiche le nom du module
-			// 	$menu .= '<td>' . htmlspecialchars($moduleName) . '</td>';
-				
-			// 	// Affiche le statut du module (activé/désactivé)
-			// 	$statusText = ($moduleValue == 1) ? 'Enabled' : 'Disabled';
-			// 	// $menu .= '<td>' . htmlspecialchars($statusText) . '</td>';
-				
-			// 	// Crée le bouton pour activer/désactiver
-			// 	$menu .= '<td>';
-			// 	$menu .= '<a class="reposition" href="' . $_SERVER["PHP_SELF"] . '?value=' . urlencode($moduleName) . '&token=' . newToken() . '&action=activedModule&confirm='.$iconValue.'">';
-			// 	$icon = ($moduleValue == 1) ? 'switch_on' : 'switch_off';
-			// 	$menu .= img_picto($langs->trans($statusText), $icon);
-			// 	$menu .= '</a>';
-			// 	$menu .= '</td>';
-				
-			// 	$menu .= '</tr>';
-			// }
-
 			$menu .= '</table>';
-
-
 
 			$this->resprints .= $menu . '
 			<script>
@@ -726,147 +698,6 @@ class ActionsFastmodulecheck extends CommonHookActions
 				});
 			</script>';
 		}
-		// Check filters
-		// var_dump($objMod->getName());
-
-		// if (in_array('toprightmenu', $contexts)) {
-		// 	// include_once DOL_DOCUMENT_ROOT .'/admin/modules.php';
-
-		// 	$action = GETPOST('action');
-			
-		// 	if ($action == 'activedModule') {
-		// 		$moduleName = GETPOST('value');
-		// 		$confirm = GETPOST('confirm');
-
-		// 		$moduleName = 'MAIN_MODULE_' . strtoupper($moduleName);
-		// 		if ($confirm == 'yes') {
-		// 			// We made some check against evil eternal modules that try to low security options.
-		// 			$checkOldValue = getDolGlobalInt('CHECKLASTVERSION_EXTERNALMODULE');
-		// 			$csrfCheckOldValue = getDolGlobalInt('MAIN_SECURITY_CSRF_WITH_TOKEN');
-		// 			$resarray = activateModule($moduleName);
-		// 			if ($checkOldValue != getDolGlobalInt('CHECKLASTVERSION_EXTERNALMODULE')) {
-		// 				setEventMessage($langs->trans('WarningModuleHasChangedLastVersionCheckParameter', $moduleName), 'warnings');
-		// 			}
-		// 			if ($csrfCheckOldValue != getDolGlobalInt('MAIN_SECURITY_CSRF_WITH_TOKEN')) {
-		// 				setEventMessage($langs->trans('WarningModuleHasChangedSecurityCsrfParameter', $moduleName), 'warnings');
-		// 			}
-
-		// 			dolibarr_set_const($db, "MAIN_IHM_PARAMS_REV", getDolGlobalInt('MAIN_IHM_PARAMS_REV') + 1, 'chaine', 0, '', $conf->entity);
-		// 			if (!empty($resarray['errors'])) {
-		// 				setEventMessages('', $resarray['errors'], 'errors');
-		// 			} else {
-		// 				//var_dump($resarray);exit;
-		// 				if ($resarray['nbperms'] > 0) {
-		// 					$tmpsql = "SELECT COUNT(rowid) as nb FROM ".MAIN_DB_PREFIX."user WHERE admin <> 1";
-		// 					$resqltmp = $db->query($tmpsql);
-		// 					if ($resqltmp) {
-		// 						$obj = $db->fetch_object($resqltmp);
-		// 						//var_dump($obj->nb);exit;
-		// 						if ($obj && $obj->nb > 1) {
-		// 							$msg = $langs->trans('ModuleEnabledAdminMustCheckRights');
-		// 							setEventMessages($msg, null, 'warnings');
-		// 						}
-		// 					} else {
-		// 						dol_print_error($db);
-		// 					}
-		// 				}
-		// 			}
-		// 			header("Location: ".$_SERVER["PHP_SELF"]."?mode=".$mode.$param.($page_y ? '&page_y='.$page_y : ''));
-		// 			exit;
-		// 			// $mod->activateModule($modulename);
-		// 		} else {
-		// 			$sql_delete = "DELETE FROM " . MAIN_DB_PREFIX . "const";
-		// 			$sql_delete .= " WHERE " . $this->db->decrypt('name') . " = '$moduleName'";
-
-		// 			if ($this->db->query($sql_delete)) {
-		// 				$action = '';
-		// 				header("Location: ".$_SERVER["PHP_SELF"].'?token=' . newToken());
-		// 			} else {
-		// 				setEventMessage('Erreurs', 'errors');
-		// 			}
-		// 			// $mod->unActivateModule($modulename);
-		// 			// exit;
-		// 		}
-		// 	}
-
-		// 	// $moduldir = dolGetModulesDirs();
-		// 	$modulTitle = [];
-		// 	$sql = 'SELECT * FROM '.MAIN_DB_PREFIX.'const WHERE name like "%MAIN_MODULE%"';
-		// 	$resql_get = $this->db->query($sql);
-			
-		// 	while ($modulTitleSql = $this->db->fetch_object($resql_get)) {
-		// 		if (!preg_match('/CSS/', $modulTitleSql->name) && 
-		// 			!preg_match('/HOOKS/', $modulTitleSql->name) && 
-		// 			!preg_match('/MAIN_MODULE_SETUP_ON_LIST_BY_DEFAULT/', $modulTitleSql->name) && 
-		// 			!preg_match('/ICON/', $modulTitleSql->name)) {
-
-		// 			$modname = explode('_', $modulTitleSql->name);
-		// 			$fmodulename = strtolower($modname[2]);
-		// 			$modulTitle[$fmodulename] = $modulTitleSql->value;
-		// 		}
-		// 	}
-
-		// 	$menu = '
-		// 	<button id="toggleButton" onclick="toggleTable()"></button>
-		// 	<table id="hiddenTable_fastmodulecheck" style="display:none; border: 1px solid black;">
-		// 		<tr class="table_fast_title">
-		// 			<th>Module</th>
-		// 			<th>Active</th>
-		// 		</tr>';
-
-		// 	foreach ($modulTitle as $moduleName => $moduleValue) {
-		// 		$iconValue = ($moduleValue == 1) ? 'no' : 'yes';
-		// 		$menu .= '<tr class="table_fast_value">';
-				
-		// 		// Affiche le nom du module
-		// 		$menu .= '<td>' . htmlspecialchars($moduleName) . '</td>';
-				
-		// 		// Affiche le statut du module (activé/désactivé)
-		// 		$statusText = ($moduleValue == 1) ? 'Enabled' : 'Disabled';
-		// 		// $menu .= '<td>' . htmlspecialchars($statusText) . '</td>';
-				
-		// 		// Crée le bouton pour activer/désactiver
-		// 		$menu .= '<td>';
-		// 		$menu .= '<a class="reposition" href="' . $_SERVER["PHP_SELF"] . '?value=' . urlencode($moduleName) . '&token=' . newToken() . '&action=activedModule&confirm='.$iconValue.'">';
-		// 		$icon = ($moduleValue == 1) ? 'switch_on' : 'switch_off';
-		// 		$menu .= img_picto($langs->trans($statusText), $icon);
-		// 		$menu .= '</a>';
-		// 		$menu .= '</td>';
-				
-		// 		$menu .= '</tr>';
-		// 	}
-
-		// 	$menu .= '</table>';
-
-
-
-		// 	$this->resprints .= $menu . '
-		// 	<script>
-		// 		function toggleTable() {
-		// 			var table = document.getElementById("hiddenTable_fastmodulecheck");
-		// 			var button = document.getElementById("toggleButton");
-
-		// 			if (table.style.display === "none") {
-		// 				table.style.display = "flex";
-		// 			} else {
-		// 				table.style.display = "none";
-		// 			}
-		// 		}
-
-		// 		// Handle clicks outside the table and button
-		// 		document.addEventListener("click", function(e) {
-		// 			var table = document.getElementById("hiddenTable_fastmodulecheck");
-		// 			var button = document.getElementById("toggleButton");
-
-		// 			// Check if click is outside the table and button
-		// 			if (!table.contains(e.target) && e.target !== button) {
-		// 				if (table.style.display === "flex") {
-		// 					table.style.display = "none";
-		// 				}
-		// 			}
-		// 		});
-		// 	</script>';
-		// }
 	}
 
 	/* Add here any other hooked methods... */
